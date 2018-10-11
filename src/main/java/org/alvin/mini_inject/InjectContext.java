@@ -19,10 +19,13 @@ import java.security.PrivilegedAction;
 import java.util.*;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
+import java.util.stream.Collectors;
 
 public class InjectContext {
 
 	private static Map<Class<?>, Object> instanceMap = new HashMap<>();
+
+	private static List<Class> clazzList = new ArrayList<>();
 
 	/**
 	 * 业务实例对象创建和获取
@@ -30,7 +33,7 @@ public class InjectContext {
 	 * @param cl
 	 * @return
 	 */
-	private static <T> T craeteInstance(Class<? extends T> cl) {
+	private static <T> T createInstance(Class<? extends T> cl) {
 		if (!instanceMap.containsKey(cl)) {
 			try {
 				instanceMap.put(cl, cl.newInstance());
@@ -48,23 +51,22 @@ public class InjectContext {
 	 * @throws Exception
 	 */
 	public static void doScanService(String packageURL) {
-		List<Class> list = new ArrayList<Class>();
 		try {
 			String packageName = packageURL;
 			packageURL = packageURL.replaceAll("[.]", "/");
 			URL baseURL = Thread.currentThread().getContextClassLoader().getResource(packageURL);
 			if ("file".equals(baseURL.getProtocol())) {
-				list.addAll(doDevScan(baseURL, packageName));
+				clazzList.addAll(doDevScan(baseURL, packageName));
 			} else if ("jar".equals(baseURL.getProtocol())) {
-				list.addAll(doRuntimeScan(baseURL, packageName));
+				clazzList.addAll(doRuntimeScan(baseURL, packageName));
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 
 		try {
-			initComponent(list);
-			injectComponent(list);
+			initComponent(clazzList);
+			injectComponent(clazzList);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -102,7 +104,7 @@ public class InjectContext {
 			boolean access = f.isAccessible();
 			try {
 				f.setAccessible(true);
-				f.set(instance, craeteInstance(f.getType()));
+				f.set(instance, createInstance(f.getType()));
 			} catch (IllegalAccessException e) {
 				e.printStackTrace();
 			} finally {
@@ -119,20 +121,7 @@ public class InjectContext {
 	 * @throws Exception
 	 */
 	private static void initComponent(List<Class> list) throws Exception {
-		loop:
-		for (Class c : list) {
-			// 获取类的所有注解
-			Annotation[] ac = c.getDeclaredAnnotations();
-			for (final Annotation a : ac) {
-				// 过滤所有的业务类注解
-				if (!a.annotationType().equals(MiniComponent.class)) {
-					continue;
-				}
-				craeteInstance(c);
-				continue loop;
-			}
-
-		}
+		list.stream().filter(c ->c.getDeclaredAnnotation(MiniComponent.class) != null).forEach(InjectContext::createInstance);
 	}
 
 	/**
@@ -241,5 +230,15 @@ public class InjectContext {
 			});
 
 		});
+	}
+
+	/**
+	 * 根据注解获取类
+	 *
+	 * @param annotationClass
+	 * @return
+	 */
+	public static List<Class> getClazzListByAnnotation(Class annotationClass) {
+		return clazzList.parallelStream().filter(item -> item.getAnnotation(annotationClass) != null).collect(Collectors.toList());
 	}
 }
