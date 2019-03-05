@@ -1,9 +1,9 @@
-package org.alvin.mini_inject.test;
+package test.alvin.test;
 
 import org.alvin.mini_inject.InjectContext;
 import org.alvin.mini_inject.annotations.MiniServiceScan;
 
-@MiniServiceScan("org.alvin.mini_inject")
+@MiniServiceScan("test.alvin.test")
 public class TestMain {
 
 	public static void main(String[] args) {

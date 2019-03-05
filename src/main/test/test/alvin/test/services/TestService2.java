@@ -1,4 +1,4 @@
-package org.alvin.mini_inject.test.services;
+package test.alvin.test.services;
 
 import org.alvin.mini_inject.annotations.MiniInject;
 import org.alvin.mini_inject.annotations.MiniComponent;
