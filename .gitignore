@@ -24,3 +24,7 @@ yarn-error.log*
 
 *.idea*
 /target
+.idea/compiler.xml
+.idea/workspace.xml
+*.iml
+.idea/workspace.xml
