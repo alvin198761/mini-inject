@@ -5,9 +5,11 @@ import org.alvin.mini_inject.plugins.MiniPlugin;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.JarURLConnection;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -281,11 +283,10 @@ public class InjectContext {
     }
 
     private static void doRunComponent() {
-        instanceMap.forEach((k, v) -> {
-            AccessController.doPrivileged(new PrivilegedAction<Object>() {
-
-                @Override
-                public Object run() {
+        AccessController.doPrivileged(new PrivilegedAction<Object>() {
+            @Override
+            public Object run() {
+                instanceMap.forEach((k, v) -> {
                     Method[] ms = k.getDeclaredMethods();
                     for (Method m : ms) {
                         MiniRun miniRun = m.getAnnotation(MiniRun.class);
@@ -304,11 +305,9 @@ public class InjectContext {
                             m.setAccessible(access);
                         }
                     }
-                    return null;
-                }
-
-            });
-
+                });
+                return null;
+            }
         });
     }
 
@@ -319,6 +318,51 @@ public class InjectContext {
      * @return
      */
     public static List<Class> getClazzListByAnnotation(Class annotationClass) {
-        return clazzList.parallelStream().filter(item -> item.getAnnotation(annotationClass) != null).collect(Collectors.toList());
+        return AccessController.doPrivileged(new PrivilegedAction<List<Class>>() {
+            public List<Class> run() {
+                return clazzList.parallelStream()
+                        .filter(item -> item.getAnnotation(annotationClass) != null)
+                        .collect(Collectors.toList());
+            }
+        });
+    }
+
+    /**
+     * 获取子类
+     *
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    public static <T> List<Class<T>> getSubClasses(final Class<T> clazz) {
+        return AccessController.doPrivileged(new PrivilegedAction<List<Class<T>>>() {
+            public List<Class<T>> run() {
+                return clazzList.parallelStream().filter(c ->
+                        clazz.isAssignableFrom(c) && !Modifier.isAbstract(c.getModifiers())
+                ).map(c -> (Class<T>) c).collect(Collectors.toList());
+            }
+        });
+    }
+
+    /**
+     * 查找方法带有这个注解的类
+     *
+     * @param annotation
+     * @return
+     */
+    public static List<Class> getByMethodAnnocation(final Annotation annotation) {
+        return AccessController.doPrivileged(new PrivilegedAction<List<Class>>() {
+            public List<Class> run() {
+                return clazzList.parallelStream().filter(item -> {
+                    Method[] ms = item.getDeclaredMethods();
+                    for (Method m : ms) {
+                        if (m.getDeclaredAnnotation(Annotation.class) != null) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }).collect(Collectors.toList());
+            }
+        });
     }
 }
