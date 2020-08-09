@@ -365,4 +365,8 @@ public class InjectContext {
             }
         });
     }
+
+    public static Properties getEnv() {
+        return env;
+    }
 }
